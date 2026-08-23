@@ -74,10 +74,10 @@ Hi_itf <- cumsum(hi_itf)                # Frecuencia relativa acumulada
 tabla_itf <- data.frame(
   clase = etiquetas_itf,
   fi = fi_itf,
-  hi = round(hi_itf, 4),
+  Fi = Fi_itf,
   #Agregamos porcentajes para facilitar analisis de los datos
   porcentaje = round(hi_itf * 100, 2),
-  Fi = Fi_itf,
+  hi = round(hi_itf, 4),
   Hi = round(Hi_itf, 4),
   #Agregamos porcentajes para facilitar analisis de los datos
   porcentaje_acumulado = round(Hi_itf * 100, 2)
