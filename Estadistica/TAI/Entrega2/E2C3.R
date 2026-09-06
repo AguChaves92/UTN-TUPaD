@@ -329,3 +329,133 @@ cat(
   "%). Ese es el tipo de vivienda más habitual en la muestra de Gran Córdoba. Media, mediana, cuartiles o desvío no se interpretan sobre códigos de categoría.\n",
   sep = ""
 )
+
+# =============================================================================
+# 4. REPRESENTACIÓN GRÁFICA
+# =============================================================================
+
+# =============================================================================
+# 4.1 Histograma — Ingreso Total Familiar (ITF)
+#
+# Se representa la distribución del ITF utilizando frecuencia absoluta.
+# Se mantienen los mismos intervalos calculados previamente con la regla de Sturges.
+# =============================================================================
+
+# Función para abreviar los valores del eje X
+fmt_eje <- function(x) {
+  ifelse(
+    x < 1000000,
+    paste0(round(x / 1000), "K"),
+    paste0(round(x / 1000000, 2), "M")
+  )
+}
+
+# Aumentamos el margen inferior para las etiquetas
+par(mar = c(7, 5, 4, 2))
+
+hist(
+  itf,
+  breaks = breaks_itf,
+  right = FALSE,
+  include.lowest = TRUE,
+  main = "Ingreso Total Familiar — Gran Córdoba",
+  xlab = "",
+  ylab = "Frecuencia absoluta - Hogares",
+  xaxt = "n"
+)
+
+axis(
+  side = 1,
+  at = breaks_itf,
+  labels = fmt_eje(breaks_itf),
+  las = 2,
+  cex.axis = 0.8
+)
+
+mtext(
+  "Ingreso Total Familiar ($)",
+  side = 1,
+  line = 5.5
+)
+
+# =============================================================================
+# 4.2 Diagrama circular — Tipo de vivienda (IV1)
+# =============================================================================
+
+# Calculamos el porcentaje de cada tipo de vivienda
+porcentaje_iv1 <- fi_iv1 / sum(fi_iv1) * 100
+
+# Nombres simplificados para mostrar en la leyenda
+nombres_iv1 <- c(
+  "Casa",
+  "Departamento",
+  "Pieza en inquilinato",
+  "Pieza en hotel/pensión",
+  "Local no construido para habitación"
+)
+
+# Etiquetas del gráfico: mostramos solamente los porcentajes
+# Mostramos el porcentaje solamente cuando representa al menos el 1%
+etiquetas_porcentaje <- ifelse(
+  porcentaje_iv1 >= 1,
+  paste0(round(porcentaje_iv1, 4), "%"),
+  ""
+)
+
+# Dejamos espacio a la derecha para la leyenda
+par(mar = c(4, 4, 4, 9), xpd = TRUE)
+
+# Construimos el diagrama circular
+pie(
+  fi_iv1,
+  labels = etiquetas_porcentaje,
+  main = "Tipo de vivienda — Gran Córdoba",
+  cex = 0.8
+)
+
+# Agregamos una leyenda con los nombres de las categorías
+legend(
+  "right",
+  inset = c(-0.65, 0),
+  legend = nombres_iv1,
+  cex = 0.75,
+  bty = "n"
+)
+
+
+# =============================================================================
+# 4.3 Análisis de los gráficos
+# =============================================================================
+
+# ITF:
+# En el histograma del Ingreso Total Familiar se observa que la mayor
+# concentración de hogares se encuentra en los primeros intervalos de ingreso.
+# El intervalo con mayor frecuencia es [795000, 1530000), en el cual se
+# encuentran 128 hogares.
+#
+# A medida que aumenta el ingreso total familiar, la frecuencia de hogares
+# disminuye. Sin embargo, se observan algunos hogares con ingresos
+# considerablemente más altos, alcanzando valores cercanos a los $6,7 millones.
+#
+# La distribución presenta una asimetría hacia la derecha: la mayoría de los
+# hogares se concentra en los intervalos de ingresos más bajos, mientras que
+# una cantidad reducida presenta ingresos elevados. Esto es consistente con
+# las medidas descriptivas obtenidas en el punto 3, donde la media resulta
+# superior a la mediana.
+
+
+# IV1:
+# En el diagrama circular correspondiente al Tipo de Vivienda se observa un
+# claro predominio de la categoría "Casa", que representa el 63,9394% de los
+# hogares de la muestra de Gran Córdoba.
+#
+# En segundo lugar se encuentra la categoría "Departamento", con un 35,7576%,
+# mientras que "Pieza en inquilinato" representa solamente el 0,3030%.
+# No se registran hogares correspondientes a las categorías "Pieza en
+# hotel/pensión" ni "Local no construido para habitación".
+#
+# En conjunto, casas y departamentos representan el 99,6970% de los hogares
+# relevados. Por lo tanto, el gráfico muestra que prácticamente la totalidad
+# de los hogares de la muestra reside en alguno de estos dos tipos de vivienda,
+# con un predominio de las casas. Esto coincide con la moda obtenida para IV1
+# en el punto 3.
