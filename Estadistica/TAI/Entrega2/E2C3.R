@@ -1,16 +1,11 @@
 # =============================================================================
 # Estadística — Entrega 2 | Aglomerado 13 (Gran Córdoba)
-# Consigna 3: medidas descriptivas de ITF (cuantitativa continua) e IV1 (nominal)
-#
-# Este script resume cómo se distribuyen dos variables de la EPH:
-#   - ITF: Ingreso Total Familiar (cuánto dinero entra al hogar)
-#   - IV1: Tipo de vivienda (casa, departamento, etc.)
+# Consigna 3: medidas descriptivas de las variables definidas en el punto (2)
 # =============================================================================
 
-# Cargo la librería necesaria para leer archivos Excel
 library(readxl)
 
-# Busco el mismo Excel de la Entrega 1. Si no está en la carpeta esperada,
+# Mismo Excel de la Entrega 1. Si no está en la carpeta esperada,
 # se abre una ventana para elegir el archivo a mano.
 candidatos <- c(
   file.path("..", "TAI-aglomerado13.xlsx"),
@@ -23,78 +18,87 @@ if (is.na(ruta_excel) || length(ruta_excel) == 0) {
   hog <- read_excel(ruta_excel)
 }
 
-# Función auxiliar: muestra un número como pesos argentinos
-# (por ejemplo 1234567 pasa a verse como $1.234.567)
-fmt_pesos <- function(x) {
-  paste0(
-    "$",
-    format(round(x, 0), big.mark = ".", decimal.mark = ",", scientific = FALSE, trim = TRUE)
-  )
+# =============================================================================
+# Diccionario de variables del punto 2 (las que usa la consigna 3)
+#
+# Punto 2.1 — ITF: cuantitativa continua (ingreso total familiar)
+# Punto 2.2 — IV1: cualitativa nominal (tipo de vivienda)
+# =============================================================================
+
+codigos_iv1 <- c(
+  "1" = "Casa",
+  "2" = "Departamento",
+  "3" = "Pieza en inquilinato",
+  "4" = "Pieza en hotel/pensión",
+  "5" = "Local no construido para habitación"
+)
+
+diccionario <- data.frame(
+  codigo = c("ITF", "IV1"),
+  nombre = c("Ingreso total familiar", "Tipo de vivienda"),
+  tipo = c("Cuantitativa continua", "Cualitativa nominal"),
+  unidad = c("Pesos", "Categoría"),
+  punto_origen = c("2.1", "2.2"),
+  medidas_consigna_3 = c(
+    "Tendencia central, posición y dispersión",
+    "Solo moda"
+  ),
+  nota = c(
+    "Suma de ingresos de los miembros del hogar. Código -9 = no respuesta (se excluye).",
+    paste(paste0(names(codigos_iv1), " = ", unname(codigos_iv1)), collapse = "; ")
+  ),
+  stringsAsFactors = FALSE
+)
+
+cat("=== Diccionario de variables (punto 2 → consigna 3) ===\n")
+print(
+  diccionario[, c("codigo", "nombre", "tipo", "unidad", "punto_origen", "medidas_consigna_3")],
+  row.names = FALSE,
+  right = FALSE
+)
+cat("\nNotas:\n")
+for (i in seq_len(nrow(diccionario))) {
+  cat("- ", diccionario$codigo[i], ": ", diccionario$nota[i], "\n", sep = "")
 }
 
+# Extraigo del dataset solo las columnas del diccionario
+hog3 <- hog[, diccionario$codigo, drop = FALSE]
+n_hogares <- nrow(hog3)
+
 # =============================================================================
-# Preparación de ITF (Ingreso Total Familiar)
+# ITF — preparación para las medidas
 #
-# Antes de calcular promedios y demás, hay que decidir qué hogares entran.
-# En la EPH, el código -9 significa "no respondió ingresos". Esos casos
-# no se pueden incluir: no son un ingreso real.
-# Los ceros sí se dejan: son hogares que declararon no tener ingreso
-# Trabajamos con la muestra tal cual (sin ponderar), igual que en el punto 2.
+# En la EPH, -9 no es un ingreso real: es "no respondió". Se saca del cálculo.
+# Muestra sin ponderar, igual que en el punto 2.
 # =============================================================================
 
-# Cantidad total de hogares en el archivo
-n_hogares <- nrow(hog)
-
-# Cantidad de hogares que no respondieron el ingreso
-n_nr_itf <- sum(hog$ITF == -9, na.rm = TRUE)
-
-# Lista de ingresos a analizar: se sacan los vacíos y los "no responde" (-9)
-itf <- hog$ITF[!is.na(hog$ITF) & hog$ITF != -9]
-
-# Cantidad de hogares que sí se usan para las medidas de ITF
+itf_bruto <- hog3$ITF
+n_nr_itf <- sum(itf_bruto == -9, na.rm = TRUE)
+itf <- itf_bruto[!is.na(itf_bruto) & itf_bruto != -9]
 n <- length(itf)
 
-# =============================================================================
-# Intervalos de ITF — mismos criterios que Entrega 1 (regla de Sturges)
-#
-# Aplicamos la regla de Sturges para determinar el número de tramos.
-# Necesitamos esos tramos para:
-#   1) saber en qué rango de ingresos se agrupan más hogares (la "clase modal")
-#   2) usar los mismos cortes en el histograma de la consigna 4.1
-# =============================================================================
-
-# Cantidad sugerida de tramos según Sturges
+# La moda de una continua se informa como clase modal. Para eso se agrupa
+# con Sturges.
 k_sturges <- 1 + 3.322 * log10(n)
-
-# Redondeamos a un número entero de tramos
 k <- round(k_sturges)
-
-# Ingreso familiar más bajo y más alto de la muestra (ya sin los -9)
 xmin <- min(itf)
 xmax <- max(itf)
-
-# Ancho de cada tramo (todos miden lo mismo)
 amplitud <- round((xmax - xmin) / k)
 
-# Armamos los cortes: desde el mínimo, saltando de "amplitud" en "amplitud"
 breaks_itf <- seq(
   from = xmin,
   to = xmin + k * amplitud,
   by = amplitud
 )
 
-# Límite inferior y superior de cada tramo
 li <- breaks_itf[-length(breaks_itf)]
 ls <- breaks_itf[-1]
-
-# Etiquetas para leer cada tramo, por ejemplo [0, 200000)
 etiquetas_itf <- paste0(
   "[", format(li, scientific = FALSE, trim = TRUE, big.mark = ""),
   ", ", format(ls, scientific = FALSE, trim = TRUE, big.mark = ""),
   c(rep(")", k - 1), "]")
 )
 
-# Clasificamos cada hogar en el tramo de ingresos que le corresponde
 clases_itf <- cut(
   itf,
   breaks = breaks_itf,
@@ -103,10 +107,7 @@ clases_itf <- cut(
   labels = etiquetas_itf
 )
 
-# Cuántos hogares hay en cada tramo
 fi_itf <- as.numeric(table(clases_itf))
-
-# Clase modal: el tramo donde hay más hogares
 clase_modal <- as.character(etiquetas_itf[which.max(fi_itf)])
 
 # =============================================================================
@@ -119,7 +120,6 @@ clase_modal <- as.character(etiquetas_itf[which.max(fi_itf)])
 #
 # Posición (cuartiles): parten a los hogares en cuatro grupos iguales.
 #   Q1 = el 25% más bajo llega como máximo a este monto
-#   Q2 = coincide con la mediana (el 50%)
 #   Q3 = el 75% llega como máximo a este monto
 #
 # Dispersión: ¿cuánto se parecen (o se diferencian) los hogares entre sí?
@@ -129,63 +129,37 @@ clase_modal <- as.character(etiquetas_itf[which.max(fi_itf)])
 #   CV (%)             = el desvío comparado con la media (permite decir si
 #                        la dispersión es alta o baja en términos relativos)
 #
-# Todas estas medidas se calculan con los ingresos originales de cada hogar,
-# no con el punto medio de cada tramo. Así no se pierde precisión.
 # =============================================================================
 
-# Promedio de ingresos familiares
 media_itf <- mean(itf)
-
-# Ingreso del hogar que queda justo en el medio
 mediana_itf <- median(itf)
-
-# Mínimo, Q1, mediana (Q2), Q3 y máximo
 q_itf <- quantile(itf, probs = c(0, 0.25, 0.50, 0.75, 1), names = FALSE)
-
-# Distancia entre el ingreso más alto y el más bajo
 rango_itf <- xmax - xmin
-
-# Distancia entre Q3 y Q1: el "ancho" del 50% central de hogares
 ric_itf <- q_itf[4] - q_itf[2]
-
-# Varianza y desvío estándar (versión muestral: se divide por n − 1)
 varianza_itf <- var(itf)
 desvio_itf <- sd(itf)
-
-# Coeficiente de variación: desvío como porcentaje de la media
 cv_itf <- desvio_itf / media_itf * 100
 
-# Función auxiliar: formatea números con punto para miles y coma decimal
-fmt_num <- function(x, d = 2) {
-  format(round(x, d), big.mark = ".", decimal.mark = ",", scientific = FALSE, trim = TRUE)
-}
-
-# Tabla resumen para leer todas las medidas juntas
 tabla_itf_medidas <- data.frame(
-  grupo = c(
-    rep("Tendencia central", 3),
-    rep("Posición", 5),
-    rep("Dispersión", 5)
-  ),
   medida = c(
     "Media", "Mediana", "Moda (clase modal)",
     "Mínimo", "Q1", "Q2", "Q3", "Máximo",
     "Rango", "RIC (Q3-Q1)", "Varianza", "Desvío estándar", "CV (%)"
   ),
   valor = c(
-    fmt_num(media_itf),
-    fmt_num(mediana_itf),
+    round(media_itf, 2),
+    round(mediana_itf, 2),
     clase_modal,
-    fmt_num(q_itf[1]),
-    fmt_num(q_itf[2]),
-    fmt_num(q_itf[3]),
-    fmt_num(q_itf[4]),
-    fmt_num(q_itf[5]),
-    fmt_num(rango_itf),
-    fmt_num(ric_itf),
-    fmt_num(varianza_itf),
-    fmt_num(desvio_itf),
-    fmt_num(cv_itf)
+    round(q_itf[1], 2),
+    round(q_itf[2], 2),
+    round(q_itf[3], 2),
+    round(q_itf[4], 2),
+    round(q_itf[5], 2),
+    round(rango_itf, 2),
+    round(ric_itf, 2),
+    round(varianza_itf, 2),
+    round(desvio_itf, 2),
+    round(cv_itf, 2)
   ),
   detalle = c(
     "promedio de los ingresos familiares",
@@ -205,49 +179,32 @@ tabla_itf_medidas <- data.frame(
   stringsAsFactors = FALSE
 )
 
-cat("=== 3. ITF — medidas descriptivas ===\n")
+cat("\n=== 3. ITF — medidas descriptivas ===\n")
 cat("Hogares en el archivo =", n_hogares, "\n")
 cat("Hogares sin respuesta de ingresos (ITF = -9) =", n_nr_itf, "\n")
 cat("n usado para las medidas =", n, "\n")
-cat("k (Sturges) =", k, "| amplitud =", amplitud, "\n")
+cat("k (Sturges, solo para la clase modal) =", k, "| amplitud =", amplitud, "\n")
 cat("Clase modal =", clase_modal, "| fi modal =", max(fi_itf), "\n\n")
-print(tabla_itf_medidas, row.names = FALSE)
+op_width <- options(width = 200)
+print(tabla_itf_medidas, row.names = FALSE, right = FALSE)
+options(op_width)
 
 # =============================================================================
 # 3.2 IV1 — Tipo de vivienda (cualitativa nominal)
 #
-# IV1 no es un número con sentido de "más o menos", sino una categoría:
-# casa, departamento, pieza, etc. En ese tipo de variable no tiene sentido
-# un promedio ni una mediana. Lo único que corresponde es la moda:
-# la categoría que más se repite.
+#  En una nominal no hay promedio ni mediana:
+# la única medida de tendencia central que corresponde es la moda.
 # =============================================================================
 
-# Significado de cada código de tipo de vivienda
-etiquetas_iv1 <- c(
-  "1 = Casa",
-  "2 = Departamento",
-  "3 = Pieza en inquilinato",
-  "4 = Pieza en hotel/pensión",
-  "5 = Local no construido para habitación"
-)
-
-# Pasamos los códigos numéricos a etiquetas legibles
 iv1_factor <- factor(
-  hog$IV1,
-  levels = 1:5,
-  labels = etiquetas_iv1
+  hog3$IV1,
+  levels = as.numeric(names(codigos_iv1)),
+  labels = paste0(names(codigos_iv1), " = ", unname(codigos_iv1))
 )
 
-# Cuántos hogares hay de cada tipo de vivienda
 fi_iv1 <- table(iv1_factor)
-
-# Tipo de vivienda más frecuente (puede haber empate)
 moda_iv1 <- names(fi_iv1)[fi_iv1 == max(fi_iv1)]
-
-# Cuántos hogares tienen ese tipo de vivienda
 fi_moda_iv1 <- max(fi_iv1)
-
-# Qué porcentaje de la muestra representa esa categoría
 hi_moda_iv1 <- fi_moda_iv1 / n_hogares
 
 cat("\n=== 3. IV1 — moda ===\n")
@@ -255,80 +212,20 @@ cat("Moda =", paste(moda_iv1, collapse = ", "), "\n")
 cat("fi =", fi_moda_iv1, "| porcentaje =", round(hi_moda_iv1 * 100, 2), "%\n")
 
 # =============================================================================
-# 3.3 Interpretación en el caso (Gran Córdoba, hogares, 1°T 2025)
+# 3.3 Conclusiones (Gran Córdoba, hogares, 1°T 2025)
 #
-# El texto de abajo se arma solo con los números que acabamos de calcular,
-# para que la lectura coincida con la tabla y no haya que copiar a mano.
+# ITF
+# - Media > mediana: asimetría a la derecha. Pocos hogares con ITF muy alto
+#   empujan el promedio; la mayoría se concentra más abajo.
+# - La mediana (y los cuartiles) describen mejor a un hogar típico que la media.
+# - La clase modal es el tramo de Sturges con más hogares (punto 2.1).
+# - RIC grande: ni el 50% central se parece entre sí.
+# - CV alto y desvío cercano a la media: mucha heterogeneidad de ingresos.
 #
-# Ideas que conviene tener presentes al leerlo:
-#   - Si la media es mayor que la mediana, unos pocos hogares muy ricos
-#     están "empujando" el promedio hacia arriba (asimetría a la derecha).
-#     Eso es típico en ingresos.
-#   - Un CV alto significa que los hogares se parecen poco entre sí:
-#     el promedio, solo, no describe bien a un hogar "típico".
-#     En ese caso conviene mirar la mediana y los cuartiles.
+# IV1
+# - Variable nominal: la única medida que corresponde es la moda (Casa).
+# - Media, mediana, cuartiles o desvío no se interpretan sobre códigos.
 # =============================================================================
-
-# Comparamos media y mediana para describir si la distribución está sesgada
-asimetria <- if (media_itf > mediana_itf) {
-  "La media queda por encima de la mediana: hay asimetría a la derecha. Eso es esperable en ingresos: unos pocos hogares con ITF muy alto empujan el promedio, mientras que la mayoría se concentra en montos más bajos."
-} else if (media_itf < mediana_itf) {
-  "La media queda por debajo de la mediana: hay asimetría a la izquierda. El promedio está tironeado por hogares de ingresos particularmente bajos."
-} else {
-  "Media y mediana coinciden: la distribución del ITF se ve simétrica en esta muestra."
-}
-
-# Traducimos el CV a un juicio sencillo sobre la dispersión
-dispersion_cv <- if (cv_itf >= 50) {
-  "muy alta"
-} else if (cv_itf >= 30) {
-  "alta"
-} else {
-  "moderada"
-}
-
-cat("\n=== Interpretación ===\n\n")
-
-cat(
-  "ITF (ingreso total familiar). En la muestra de Gran Córdoba (n = ", n,
-  if (n_nr_itf > 0) paste0("; se excluyeron ", n_nr_itf, " hogares con ITF = -9") else "",
-  ") el ingreso familiar promedio es ", fmt_pesos(media_itf),
-  " y la mediana es ", fmt_pesos(mediana_itf),
-  ". La mitad de los hogares percibe como máximo ", fmt_pesos(mediana_itf),
-  ". ", asimetria, "\n\n",
-  sep = ""
-)
-
-cat(
-  "La clase más frecuente es ", clase_modal, " (", max(fi_itf),
-  " hogares). Ese intervalo es la moda de la variable agrupada con los mismos cortes de Sturges del punto 2; conviene usar esos mismos breaks en el histograma de la consigna 4.1.\n\n",
-  sep = ""
-)
-
-cat(
-  "En cuanto a la posición, el 25% de los hogares tiene un ITF de hasta ",
-  fmt_pesos(q_itf[2]), " (Q1) y el 75% de hasta ", fmt_pesos(q_itf[4]),
-  " (Q3). El 50% central de la muestra se mueve en un rango intercuartílico de ",
-  fmt_pesos(ric_itf), ".\n\n",
-  sep = ""
-)
-
-cat(
-  "La dispersión es ", dispersion_cv, ": el rango va de ",
-  fmt_pesos(xmin), " a ", fmt_pesos(xmax),
-  " y el desvío estándar es ", fmt_pesos(desvio_itf),
-  " (CV = ", round(cv_itf, 2),
-  "%). Hay mucha heterogeneidad de ingresos entre hogares del aglomerado; el promedio, por sí solo, no describe bien a un hogar 'típico'. Para hablar de un valor representativo conviene apoyarse en la mediana y en los cuartiles.\n\n",
-  sep = ""
-)
-
-cat(
-  "IV1 (tipo de vivienda). Como es cualitativa nominal, la única medida de tendencia central que corresponde es la moda: ",
-  paste(moda_iv1, collapse = " / "), " (", fi_moda_iv1, " hogares; ",
-  round(hi_moda_iv1 * 100, 2),
-  "%). Ese es el tipo de vivienda más habitual en la muestra de Gran Córdoba. Media, mediana, cuartiles o desvío no se interpretan sobre códigos de categoría.\n",
-  sep = ""
-)
 
 # =============================================================================
 # 4. REPRESENTACIÓN GRÁFICA
