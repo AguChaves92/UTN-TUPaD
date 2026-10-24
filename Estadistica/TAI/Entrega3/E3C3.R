@@ -2,12 +2,15 @@
 # Estadística — Entrega 3 | Aglomerado 13 (Gran Córdoba)
 # Consigna 5: modelo hipergeométrico (hogares inquilinos, II7)
 # Consigna 6: modelo normal (Ingreso Total Familiar, ITF)
+# Consigna 7: modelo de Poisson (formularios recibidos por el servidor)
 #
 # En esta entrega pasamos de describir los datos a calcular probabilidades:
 #   - En la 5 elegimos 15 hogares al azar y nos preguntamos cuántos pueden
 #     ser inquilinos.
 #   - En la 6 suponemos que el ITF sigue una distribución normal y
 #     calculamos la probabilidad de que un hogar caiga en cierto rango de ingresos.
+#   - En la 7 el servidor recibe formularios a una tasa fija y calculamos
+#     cuántos pueden llegar en 15, 30 o 45 minutos.
 # =============================================================================
 
 # Cargo la librería necesaria para leer archivos Excel
@@ -267,3 +270,92 @@ tabla_6 <- data.frame(
 
 cat("\n=== Resumen del punto 6 | μ =", fmt_num(media), "| σ =", fmt_num(desv), "===\n")
 print(tabla_6, row.names = FALSE, right = FALSE)
+
+# =============================================================================
+# 7. MODELO DE POISSON — Formularios que llegan al servidor
+#
+# x: cantidad de formularios completados que el servidor recibe en un
+# intervalo de tiempo.
+#
+# La consigna da el promedio en una hora: 12 formularios. Cada pregunta
+# mira otro intervalo, así que la media de Poisson se achica en la misma
+# proporción:
+#   λ = 12 * (minutos / 60)
+#
+#   15 min -> λ = 12 * 15/60 = 3
+#   30 min -> λ = 12 * 30/60 = 6
+#   45 min -> λ = 12 * 45/60 = 9
+#
+# x puede ser 0, 1, 2, ... sin un máximo fijo: en un intervalo pueden
+# llegar más formularios que el promedio.
+#
+# Función de cuantía:
+#   P(x = xi) = e^(−λ) * λ^xi / xi!
+#
+# La consigna pide dos supuestos: las recepciones son independientes y la
+# tasa promedio se mantiene constante. Con eso el conteo en un intervalo
+# fijo sigue una Poisson de media λ.
+#
+# En R:
+#   dpois(x, lambda) -> P(x = xi)
+#   ppois(x, lambda) -> P(x <= xi)
+# Ojo: en una variable discreta, "menos de 7" es P(x <= 6).
+# =============================================================================
+
+# Tasa que da la consigna, en formularios por hora
+tasa_hora <- 12
+
+# Cada ítem usa su propio λ, porque el intervalo no es el mismo
+lambda_7_1 <- tasa_hora * 15 / 60   # 15 minutos
+lambda_7_2 <- tasa_hora * 30 / 60   # 30 minutos
+lambda_7_3 <- tasa_hora * 45 / 60   # 45 minutos
+
+cat("\n=== 7. Modelo de Poisson ===\n")
+cat("Tasa =", tasa_hora, "formularios por hora\n")
+cat("λ(15 min) =", lambda_7_1,
+    "| λ(30 min) =", lambda_7_2,
+    "| λ(45 min) =", lambda_7_3, "\n\n")
+
+# -----------------------------------------------------------------------------
+# 7.1 ¿Probabilidad de que reciba exactamente 4 formularios en 15 minutos?
+#     λ = 3
+#     P(x = 4) = e^(-3) * 3^4 / 4!
+# -----------------------------------------------------------------------------
+p_7_1 <- dpois(4, lambda = lambda_7_1)
+
+# -----------------------------------------------------------------------------
+# 7.2 ¿Probabilidad de que reciba como máximo 5 formularios en 30 minutos?
+#     λ = 6
+#     "Como máximo 5" = 5 o menos (incluye el 0)
+#     P(x <= 5) = P(x = 0) + P(x = 1) + ... + P(x = 5)
+# -----------------------------------------------------------------------------
+p_7_2 <- ppois(5, lambda = lambda_7_2, lower.tail = TRUE)
+
+# -----------------------------------------------------------------------------
+# 7.3 ¿Probabilidad de que reciba menos de 7 formularios en 45 minutos?
+#     λ = 9
+#     "Menos de 7" = 6 o menos. El 7 no entra.
+#     P(x < 7) = P(x <= 6) = P(x = 0) + ... + P(x = 6)
+# -----------------------------------------------------------------------------
+p_7_3 <- ppois(6, lambda = lambda_7_3, lower.tail = TRUE)
+
+# Tabla resumen del punto 7
+tabla_7 <- data.frame(
+  Consigna = c(
+    "7.1 P(x = 4) en 15 min",
+    "7.2 P(x <= 5) en 30 min",
+    "7.3 P(x < 7) en 45 min"
+  ),
+  Tipo = c(
+    "valor exacto -> dpois",
+    "como máximo 5 -> suma de 0 a 5",
+    "menos de 7 -> suma de 0 a 6"
+  ),
+  Lambda = c(lambda_7_1, lambda_7_2, lambda_7_3),
+  Resultado = c(fmt_num(p_7_1), fmt_num(p_7_2), fmt_num(p_7_3)),
+  Porcentaje = c(fmt_pct(p_7_1), fmt_pct(p_7_2), fmt_pct(p_7_3)),
+  stringsAsFactors = FALSE
+)
+
+cat("=== Resumen del punto 7 ===\n")
+print(tabla_7, row.names = FALSE, right = FALSE)
