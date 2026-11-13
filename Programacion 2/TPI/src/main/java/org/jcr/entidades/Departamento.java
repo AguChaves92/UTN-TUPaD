@@ -9,7 +9,9 @@ public class Departamento {
 
     private final String nombre;
     private final EspecialidadMedica especialidad;
+    private Hospital hospital;
     private final List<Medico> medicos = new ArrayList<>();
+    private final List<Sala> salas = new ArrayList<>();
 
     public Departamento(String nombre, EspecialidadMedica especialidad) {
         this.nombre = Validaciones.validarString(nombre, "El nombre del departamento no puede estar vacío");
@@ -27,6 +29,23 @@ public class Departamento {
         return especialidad;
     }
 
+    public Hospital getHospital() {
+        return hospital;
+    }
+
+    public void setHospital(Hospital hospital) {
+        if (this.hospital == hospital) {
+            return;
+        }
+        if (this.hospital != null) {
+            this.hospital.desvincularDepartamento(this);
+        }
+        this.hospital = hospital;
+        if (hospital != null) {
+            hospital.vincularDepartamento(this);
+        }
+    }
+
     public void agregarMedico(Medico medico) {
         if (medico == null) {
             throw new IllegalArgumentException("El médico no puede ser nulo");
@@ -36,6 +55,16 @@ public class Departamento {
 
     public List<Medico> getMedicos() {
         return Collections.unmodifiableList(medicos);
+    }
+
+    public Sala crearSala(String numero, String tipo) {
+        Sala sala = new Sala(numero, tipo, this);
+        salas.add(sala);
+        return sala;
+    }
+
+    public List<Sala> getSalas() {
+        return Collections.unmodifiableList(salas);
     }
 
     void vincularMedico(Medico medico) {

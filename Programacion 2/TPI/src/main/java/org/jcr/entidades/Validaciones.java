@@ -26,4 +26,10 @@ final class Validaciones {
         }
         return numero;
     }
+
+    static void noNulo(Object valor, String mensajeError) {
+        if (valor == null) {
+            throw new IllegalArgumentException(mensajeError);
+        }
+    }
 }

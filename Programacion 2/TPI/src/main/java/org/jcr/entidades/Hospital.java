@@ -9,6 +9,7 @@ public class Hospital {
     private final String nombre;
     private final String direccion;
     private final String telefono;
+    private final List<Departamento> departamentos = new ArrayList<>();
     private final List<Paciente> pacientes = new ArrayList<>();
 
     public Hospital(String nombre, String direccion, String telefono) {
@@ -29,6 +30,17 @@ public class Hospital {
         return telefono;
     }
 
+    public void agregarDepartamento(Departamento departamento) {
+        if (departamento == null) {
+            throw new IllegalArgumentException("El departamento no puede ser nulo");
+        }
+        departamento.setHospital(this);
+    }
+
+    public List<Departamento> getDepartamentos() {
+        return Collections.unmodifiableList(departamentos);
+    }
+
     public void agregarPaciente(Paciente paciente) {
         if (paciente == null) {
             throw new IllegalArgumentException("El paciente no puede ser nulo");
@@ -38,6 +50,16 @@ public class Hospital {
 
     public List<Paciente> getPacientes() {
         return Collections.unmodifiableList(pacientes);
+    }
+
+    void vincularDepartamento(Departamento departamento) {
+        if (!departamentos.contains(departamento)) {
+            departamentos.add(departamento);
+        }
+    }
+
+    void desvincularDepartamento(Departamento departamento) {
+        departamentos.remove(departamento);
     }
 
     void vincularPaciente(Paciente paciente) {
